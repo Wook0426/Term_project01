@@ -382,9 +382,76 @@ def main(page: ft.Page):
                     ft.Text(f"Schedule ID: {schedule_id}", size=12,
                             color=ft.Colors.GREY_600),
                     ft.Container(height=24),
+                    ft.ElevatedButton("나의 여행", on_click=lambda e: mytours_screen, width=10),
+                    ft.Container(height=8),
                     ft.ElevatedButton("처음으로", on_click=lambda e: home_screen(), width=150),
                 ]
             )
         )
     home_screen()
+
+    def mytours_screen():
+        page.clean()
+
+        df = con.execute("""
+        SELECT u.name,
+               t.tour_name,
+               s.visit_date,
+               s.visit_time,
+               p.place_name,
+               p.place_address
+        FROM   Users    u
+        JOIN   Tour     t ON u.user_id    = t.user_id
+        JOIN   Schedule s ON t.tour_id    = s.tour_id
+        JOIN   Place    p ON s.schedule_id = p.schedule_id
+        """).df()   #전체 테이블 join한것 
+
+        columns = [
+            ft.DataColumn(ft.TExt(col))
+            for col in ["이름", "여행명", "방문날짜", "방문시간", "관광지", "주소"]
+        ]
+
+        rows = []
+        for _, row in df.iterrows():    
+            rows.append(    # row 값 추가 
+                ft.DataRow( # datatable 열 접근
+                    cells=[ # 원소 접근
+                        ft.DataCell(ft.Text(str(row['name']))),
+                        ft.DataCell(ft.Text(str(row['tour_name']))),
+                        ft.DataCell(ft.Text(str(row['visit_date']))),
+                        ft.DataCell(ft.Text(str(row['visit_time']))),
+                        ft.DataCell(ft.Text(str(row['place_name']))),
+                        ft.DataCell(ft.Text(str(row['place_address']))),
+                    ]
+                )
+            )
+        if not rows:    # dataTable row에 값이 없을 경우 예외처리
+            rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text("저장된 여행이 없습니다.")),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                ])
+            )
+        page.add(
+            ft.Column(
+                scroll=ft.ScrollMode.AUTO,
+                controls=[
+                    ft.Row(controls=[
+                        ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: home_screen()),
+                        ft.Text("나의 여행", size=15, weight=ft.FontWeight.BOLD)
+                    ]),
+                    ft.Divider(),
+                    ft.DataTable( #datatable
+                        columns=columns,
+                        rows=rows,
+                        vertical_lines=ft.BorderSide(1, ft.Colors.GREY_300), # 세로 구분선
+                        horizontal_lines=ft.BorderSide(1, ft.Colors.GREY_300), # 가로 구분선
+                    ),
+                ]
+            )
+        )
 ft.run(main)
