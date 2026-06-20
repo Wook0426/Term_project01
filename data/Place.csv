@@ -1,0 +1,11 @@
+place_id,place_name,place_address,place_description,image_url
+1,1,3,경복궁,서울 종로구 사직로 161,조선 왕조의 법궁으로 한국을 대표하는 궁궐,images/gyongbok_palace.jfif
+2,1,3,남산서울타워,서울 용산구 남산공원길 105,서울 전경을 감상할 수 있는 전망대,images/Namsan_tower.jfif
+3,1,2,해운대해수욕장,부산 해운대구 우동,대한민국 대표 해수욕장,images/haeundae_beach.jfif
+4,1,3,불국사,경북 경주시 불국로 385,유네스코 세계문화유산 사찰,images/bulguk_temple.jfif
+5,1,3,석굴암,경북 경주시 석굴로 238,신라시대 불교 예술의 걸작,images/sukgul_cave.jfif
+6,2,1,성산일출봉,제주 서귀포시 성산읍,제주의 대표적인 화산 지형,images/sungsan_peak.jfif
+7,2,4,에버랜드,경기 용인시 처인구 포곡읍,국내 최대 규모의 테마파크,images/amusementpark_everland.jfif
+8,2,4,전주한옥마을,전북 전주시 완산구,전통 한옥이 밀집한 관광지,images/jeonju_hanok_town.jfif
+9,2,3,오죽헌,강원 강릉시 율곡로3139번길 24,신사임당과 율곡 이이의 생가,images/ojukhun.jfif
+10,2,2,독도,경북 울릉군 울릉읍 독도리,대한민국 최동단의 섬,images/dokdo.jfif
