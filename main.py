@@ -1,9 +1,9 @@
 import duckdb
 import flet as ft
 
-# ✅ read_only=False 명시, 잠금 충돌 방지
-#con = duckdb.connect("data/tour_planner_term.db", read_only=False)
-con = duckdb.connect()
+# read_only=False 명시, 잠금 충돌 방지
+con = duckdb.connect("data/tour_planner_term.db", read_only=False)
+#con = duckdb.connect()
 # db연결은 항상 main밖에서 초회실행
 # auto_increment 표현을 위한 시퀀스 생성
 con.execute("CREATE SEQUENCE IF NOT EXISTS place_seq")
@@ -47,7 +47,7 @@ con.execute("""
         schedule_id BIGINT DEFAULT nextval ('schedule_seq') PRIMARY KEY,
         tour_id BIGINT NOT NULL,
         visit_time VARCHAR NOT NULL,
-        visit_date INTEGER NOT NULL,
+        visit_date VARCHAR NOT NULL,
                 
         FOREIGN KEY (tour_id) REFERENCES Tour(tour_id)
     )
@@ -110,8 +110,8 @@ con.execute("""
 """)
 con.execute("""
     INSERT OR IGNORE INTO Schedule VALUES
-    (1, 1, '12:30', 20260612),
-    (2, 2, '15:46', 200260613)
+    (1, 1, '12:30', '2026.06.12'),
+    (2, 2, '15:46', '2026.06.13')
 """)
 con.execute("""         
      INSERT OR IGNORE INTO Place
@@ -262,6 +262,7 @@ def main(page: ft.Page):
         page.add(
             ft.Column(
                 scroll=ft.ScrollMode.AUTO,  #카드가 많아도 스크롤 가능하다.
+                expand=True,
                 controls=[
                     ft.Row(controls=[
                         ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: home_screen()), #기본 사용시 입실행 즉시 실행되므로 가상함수로 선언하여 클릭시 - 반환값이 아닌 함수자체를 받게한다.
@@ -292,7 +293,10 @@ def main(page: ft.Page):
                 snack_bar.open=True
                 page.update()
                 return 
-            show_tour_input(place_id, place_name, visit_date=int(date_field.value), visit_time=time_field.value)
+            
+            raw = date_field.value  #날짜 입력 변환
+            formatted_date = f"{raw[0:4]}.{raw[4:6]}.{raw[6:8]}"
+            show_tour_input(place_id, place_name, visit_date=formatted_date, visit_time=time_field.value)
 
         page.add(
             ft.Column(
@@ -313,7 +317,7 @@ def main(page: ft.Page):
             )
         )
     
-    def show_tour_input(place_id: int, place_name: str, visit_date:int, visit_time: str):
+    def show_tour_input(place_id: int, place_name: str, visit_date:str, visit_time: str):
         # 여행정보 기입 후 전체 정보 db저장
         page.clean()
 
@@ -382,13 +386,12 @@ def main(page: ft.Page):
                     ft.Text(f"Schedule ID: {schedule_id}", size=12,
                             color=ft.Colors.GREY_600),
                     ft.Container(height=24),
-                    ft.ElevatedButton("나의 여행", on_click=lambda e: mytours_screen, width=10),
+                    ft.ElevatedButton("전체 여행", on_click=lambda e: mytours_screen(), width=150),
                     ft.Container(height=8),
                     ft.ElevatedButton("처음으로", on_click=lambda e: home_screen(), width=150),
                 ]
             )
         )
-    home_screen()
 
     def mytours_screen():
         page.clean()
@@ -407,7 +410,7 @@ def main(page: ft.Page):
         """).df()   #전체 테이블 join한것 
 
         columns = [
-            ft.DataColumn(ft.TExt(col))
+            ft.DataColumn(ft.Text(col))
             for col in ["이름", "여행명", "방문날짜", "방문시간", "관광지", "주소"]
         ]
 
@@ -439,10 +442,11 @@ def main(page: ft.Page):
         page.add(
             ft.Column(
                 scroll=ft.ScrollMode.AUTO,
+                expand=True,
                 controls=[
                     ft.Row(controls=[
                         ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: home_screen()),
-                        ft.Text("나의 여행", size=15, weight=ft.FontWeight.BOLD)
+                        ft.Text("전체 여행", size=15, weight=ft.FontWeight.BOLD)
                     ]),
                     ft.Divider(),
                     ft.DataTable( #datatable
@@ -454,4 +458,5 @@ def main(page: ft.Page):
                 ]
             )
         )
+    home_screen()
 ft.run(main)
