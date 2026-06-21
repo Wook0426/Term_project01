@@ -56,7 +56,7 @@ con.execute("""
 con.execute("""
     CREATE TABLE IF NOT EXISTS Place (
         place_id BIGINT DEFAULT nextval('place_seq') PRIMARY KEY,
-        schedule_id BIGINT NOT NULL,
+        schedule_id BIGINT,
         recommend_id BIGINT NOT NULL,
         place_name VARCHAR NOT NULL,
         place_address VARCHAR NOT NULL,
@@ -288,14 +288,14 @@ def main(page: ft.Page):
         def on_next(e): # 날짜/시간 입력 후 여행생성
             if not date_field.value or not time_field.value: # 입력검증
                 # snack_bar 사용
-                snack_bar = ft.SnackBar(content=ft.Text("날짜와 시간을 입력해주세요."))
+                snack_bar = ft.SnackBar(content=ft.Text("날짜와 시간을 입력해주세요.")) #입력이 다를경우
                 page.overlay.append(snack_bar)
                 snack_bar.open=True
                 page.update()
                 return 
             
             raw = date_field.value  #날짜 입력 변환
-            formatted_date = f"{raw[0:4]}.{raw[4:6]}.{raw[6:8]}"
+            formatted_date = f"{raw[0:4]}.{raw[4:6]}.{raw[6:8]}"    #20260621과 같은 긴 정수를 YYYY.MM.DD로 변환
             show_tour_input(place_id, place_name, visit_date=formatted_date, visit_time=time_field.value)
 
         page.add(
@@ -348,6 +348,11 @@ def main(page: ft.Page):
             schedule_id = int (con.execute(
                 "SELECT currval('schedule_seq')"
             ).df().iloc[0, 0])   # (0,0) 값 꺼내기
+            con.execute("""
+                UPDATE Place
+                SET schedule_id = ?
+                WHERE place_id = ?
+            """, [schedule_id, place_id])
 
             complete_screen(tour_name, place_name, schedule_id) # 완료 화면
 
@@ -371,6 +376,7 @@ def main(page: ft.Page):
                     ]
                 )
             )
+        
     def complete_screen(tour_name: str, place_name: str, schedule_id: int):
         #일정 저장 완료 및 홈버튼
         page.clean()
@@ -378,7 +384,7 @@ def main(page: ft.Page):
             ft.Column(
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 controls=[
-                    ft.Icon(ft.Icons.CHECK_CIRCLE, size=64, color=ft.Colors.GREEN),
+                    ft.Icon(ft.Icons.CHECK_CIRCLE, size=64, color=ft.Colors.GREEN), #완료 표시 이모티콘
                     ft.Text("일정이 저장되었습니다!", size=20, weight=ft.FontWeight.BOLD),
                     ft.Container(height=8),
                     ft.Text(f"여행: {tour_name}", size=14),
@@ -396,9 +402,40 @@ def main(page: ft.Page):
     def mytours_screen():
         page.clean()
 
+        def on_delete_tour(e):  #삭제 로직
+            tour_id = e.control.data["tour_id"]
+            schedule_id = e.control.data["schedule_id"]
+
+            # place table과 schedule table의 id연결 끊기
+            place_df = con.execute(""" 
+                SELECT place_id FROM Place WHERE schedule_id = ?
+            """, [schedule_id]).df()
+
+            for _, place_row in place_df.iterrows():
+                pid = int(place_row['place_id'])
+
+                    #  Bookmark에서 해당 place 참조 삭제
+                con.execute("DELETE FROM Bookmark WHERE place_id = ?", [pid])
+
+                    #  Review에서 해당 place 참조 삭제
+                con.execute("DELETE FROM Review WHERE place_id = ?", [pid])
+
+                    #  Place 삭제 (Bookmark, Review 참조 없어진 후)
+            con.execute("DELETE FROM Place WHERE schedule_id = ?", [schedule_id])
+
+                 #  Schedule 삭제 (Place 참조 없어진 후)
+            con.execute("DELETE FROM Schedule WHERE schedule_id = ?", [schedule_id])
+
+                #  Tour 삭제 (Schedule 없어진 후)
+            con.execute("DELETE FROM Tour WHERE tour_id = ?", [tour_id])
+
+            mytours_screen()
+
         df = con.execute("""
         SELECT u.name,
+                t.tour_id,
                t.tour_name,
+                s.schedule_id,
                s.visit_date,
                s.visit_time,
                p.place_name,
@@ -406,12 +443,12 @@ def main(page: ft.Page):
         FROM   Users    u
         JOIN   Tour     t ON u.user_id    = t.user_id
         JOIN   Schedule s ON t.tour_id    = s.tour_id
-        JOIN   Place    p ON s.schedule_id = p.schedule_id
+        LEFT JOIN   Place    p ON s.schedule_id = p.schedule_id
         """).df()   #전체 테이블 join한것 
 
         columns = [
             ft.DataColumn(ft.Text(col))
-            for col in ["이름", "여행명", "방문날짜", "방문시간", "관광지", "주소"]
+            for col in ["이름", "여행명", "방문날짜", "방문시간", "관광지", "주소", "삭제"]
         ]
 
         rows = []
@@ -425,6 +462,18 @@ def main(page: ft.Page):
                         ft.DataCell(ft.Text(str(row['visit_time']))),
                         ft.DataCell(ft.Text(str(row['place_name']))),
                         ft.DataCell(ft.Text(str(row['place_address']))),
+
+                        ft.DataCell(
+                            ft.IconButton(
+                                ft.Icons.DELETE,
+                                icon_color=ft.Colors.RED,
+                                data={
+                                    "tour_id": int(row['tour_id']),
+                                    "schedule_id": int(row['schedule_id']),
+                                },
+                                on_click=on_delete_tour #클릭하면 삭제이벤트 발동
+                            )
+                        ),
                     ]
                 )
             )
@@ -437,8 +486,10 @@ def main(page: ft.Page):
                     ft.DataCell(ft.Text("")),
                     ft.DataCell(ft.Text("")),
                     ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
                 ])
             )
+        
         page.add(
             ft.Column(
                 scroll=ft.ScrollMode.AUTO,
